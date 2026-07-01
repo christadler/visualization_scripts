@@ -29,20 +29,22 @@ The script prints two tables to the console before plotting:
 
 1. Participants per country, sorted alphabetically.
 2. Participants per region, with participant count and percentage of the
-   total. Europe, widening countries and associated countries are always
-   listed first (in that order); the remaining regions follow sorted by
-   participant count (descending). Countries within a region are sorted by
-   participant count (descending).
+   total. Regions always appear in this fixed order: Europe, widening
+   countries, associated countries, Africa, Asia, Middle East,
+   Middle/South America, Oceania, U.S. + Canada. Countries within a region
+   are sorted by participant count (descending).
 
 It then saves the chart to `country_of_affiliation_double_pie_chart.png`.
+The chart has no title; the legend ("Applications per Region", bottom left)
+lists each region as `<count> (<percentage>) <region name>`.
 
 ## Customizing colors
 
-- `FIXED_REGION_COLORS` in `double_pie_chart.py` sets the colors for Europe,
-  widening countries and associated countries (a related blue/green family).
-- All other regions are colored along a yellow -> orange gradient
-  (`OTHER_REGION_DARK` / `OTHER_REGION_LIGHT`), with the largest region
-  getting the darkest shade.
+`FIXED_REGION_COLORS` in `double_pie_chart.py` sets one color per region,
+inspired by the Geo-INQUIRE branding: blue/green (from the logo) for Europe,
+widening countries and associated countries; warm orange/red/yellow tones
+(from the project infographic) for the remaining world regions. Any region
+not listed there falls back to a grey gradient, sorted by count.
 
 Each country inherits a lighter/darker shade of its region's color (see
 `assign_country_colors`), so changing a region's base color updates all of

@@ -8,10 +8,10 @@ Reads:
 Steps:
   1. Count participants per country, sorted alphabetically.
   2. Map each country to its region via data/Countries.csv, then aggregate per
-     region. Regions are ordered with Europe, widening countries and
-     associated countries first (in that order), followed by the remaining
-     regions sorted by participant count (descending). Countries within a
-     region are sorted by participant count (descending).
+     region. Regions are always ordered as: Europe, widening countries,
+     associated countries, Africa, Asia, Middle East, Middle/South America,
+     Oceania, U.S. + Canada. Countries within a region are sorted by
+     participant count (descending).
   3. Plot a nested donut chart: inner ring = regions, outer ring = countries.
      Countries are colored as shades of their region's base color.
 """
@@ -30,19 +30,37 @@ OUTPUT_FILE = PROJECT_DIR / "country_of_affiliation_double_pie_chart.png"
 
 COUNTRY_COLUMN = "Country of Affiliation"
 
-# Europe, widening countries and associated countries are always shown first,
-# in this order, using a related blue/green color family.
-FIXED_REGION_ORDER = ["Europe", "widening countries", "associated countries"]
+# Regions are always shown in this order. Colors are inspired by the
+# Geo-INQUIRE branding: blue/green (from the logo) for Europe and the
+# EU-widening/associated categories, warm orange/red/yellow tones (from the
+# infographic) for the remaining world regions.
+FIXED_REGION_ORDER = [
+    "Europe",
+    "widening countries",
+    "associated countries",
+    "Africa",
+    "Asia",
+    "Middle East",
+    "Middle/South America",
+    "Oceania",
+    "U.S. + Canada",
+]
 FIXED_REGION_COLORS = {
-    "Europe": "#1B5FA8",
-    "widening countries": "#2F8F8F",
-    "associated countries": "#4CAF6D",
+    "Europe": "#1B5EA8",
+    "widening countries": "#2E8B74",
+    "associated countries": "#4CAF50",
+    "Africa": "#C1272D",
+    "Asia": "#E8791C",
+    "Middle East": "#F2A93B",
+    "Middle/South America": "#F2B705",
+    "Oceania": "#F7CB5D",
+    "U.S. + Canada": "#FBE29A",
 }
 
-# All other regions are ordered by participant count (descending) and colored
-# along a yellow -> orange gradient, largest region gets the darkest shade.
-OTHER_REGION_DARK = "#D9700E"
-OTHER_REGION_LIGHT = "#FFE29A"
+# Any region not covered above (e.g. new/unexpected categories) is appended
+# after the fixed list, ordered by participant count, using this gradient.
+OTHER_REGION_DARK = "#8A8A8A"
+OTHER_REGION_LIGHT = "#D4D4D4"
 
 DEFAULT_REGION_COLOR = "#999999"
 
@@ -104,8 +122,8 @@ def interpolate_gradient(dark_hex: str, light_hex: str, n: int):
 
 
 def order_regions_and_assign_colors(region_totals: pd.Series):
-    """Europe / widening countries / associated countries first (blue/green),
-    then the rest sorted by count descending (yellow -> orange gradient)."""
+    """Fixed region order/colors per FIXED_REGION_ORDER; any leftover region
+    (not in that list) is appended, sorted by count descending."""
     fixed_present = [r for r in FIXED_REGION_ORDER if r in region_totals.index]
     other_regions = [r for r in region_totals.index if r not in FIXED_REGION_ORDER]
 
@@ -149,8 +167,7 @@ def print_step2(table: pd.DataFrame, region_totals: pd.Series):
     total = region_totals.sum()
     print("=" * 60)
     print("Schritt 2: Teilnehmer je Region, je Land innerhalb der Region")
-    print("(Europe / widening countries / associated countries zuerst, dann")
-    print("die restlichen Regionen absteigend nach Teilnehmerzahl)")
+    print("(feste Regionsreihenfolge, siehe FIXED_REGION_ORDER)")
     print("=" * 60)
     for region in region_totals.index:
         count = region_totals[region]
@@ -162,7 +179,7 @@ def print_step2(table: pd.DataFrame, region_totals: pd.Series):
 
 
 def plot_double_pie(table: pd.DataFrame, region_totals: pd.Series, region_colors: dict):
-    fig, ax = plt.subplots(figsize=(11, 10), subplot_kw=dict(aspect="equal"))
+    fig, ax = plt.subplots(figsize=(10, 10), subplot_kw=dict(aspect="equal"))
 
     total = region_totals.sum()
     ordered_colors = [region_colors[r] for r in region_totals.index]
@@ -193,22 +210,21 @@ def plot_double_pie(table: pd.DataFrame, region_totals: pd.Series, region_colors
     # Small region slices would overlap if labeled in-wedge, so regions are
     # explained via a legend instead of inline text.
     region_legend_labels = [
-        f"{r} ({n}, {n / total * 100:.1f}%)" for r, n in region_totals.items()
+        f"{n} ({n / total * 100:.1f}%) {r}" for r, n in region_totals.items()
     ]
     ax.legend(
         inner_wedges,
         region_legend_labels,
-        title="Region",
-        loc="center left",
-        bbox_to_anchor=(1.08, 0.5),
+        title="Applications per Region",
+        loc="lower left",
+        bbox_to_anchor=(0.0, 0.0),
         fontsize=9,
         title_fontsize=10,
         frameon=False,
     )
 
     ax.set_xlim(-1.7, 1.7)
-    ax.set_ylim(-1.7, 1.8)
-    fig.suptitle("Country of Affiliation je Region", fontsize=15, y=0.97)
+    ax.set_ylim(-1.7, 1.7)
     fig.savefig(OUTPUT_FILE, dpi=200, bbox_inches="tight")
     print(f"Chart gespeichert unter: {OUTPUT_FILE}")
 
