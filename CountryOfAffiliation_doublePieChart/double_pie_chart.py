@@ -1,22 +1,27 @@
 """Nested (double) pie chart of participants' country of affiliation, grouped by region.
 
 Reads:
-  - data/SDL_Trg.csv    participant list with a "Country of Affiliation" column
+  - a participants CSV with a "Country of Affiliation" column
+    (path given on the command line, defaults to data/SDL_Trg.csv)
   - data/Countries.csv  country -> region/category lookup table
 
 Steps:
-  1. Count participants per country (data/SDL_Trg.csv), sorted alphabetically.
+  1. Count participants per country, sorted alphabetically.
   2. Map each country to its region via data/Countries.csv, then aggregate per
-     region. Regions are sorted by total participant count (descending), and
-     countries within a region are sorted by participant count (descending).
+     region. Regions are ordered with Europe, widening countries and
+     associated countries first (in that order), followed by the remaining
+     regions sorted by participant count (descending). Countries within a
+     region are sorted by participant count (descending).
   3. Plot a nested donut chart: inner ring = regions, outer ring = countries.
      Countries are colored as shades of their region's base color.
 """
+import argparse
 import colorsys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
 import pandas as pd
+from matplotlib.colors import to_rgb
 
 PROJECT_DIR = Path(__file__).parent
 PARTICIPANTS_FILE = PROJECT_DIR / "data" / "SDL_Trg.csv"
@@ -25,27 +30,39 @@ OUTPUT_FILE = PROJECT_DIR / "country_of_affiliation_double_pie_chart.png"
 
 COUNTRY_COLUMN = "Country of Affiliation"
 
-# Base color per region/category. Adjust these to match your project's
-# branding -- countries inherit a shade of their region's color (see
-# assign_country_colors), so changing a value here updates the whole region.
-REGION_COLORS = {
-    "Europe": "#3B7DD8",
-    "Asia": "#E0A72E",
-    "Africa": "#4FA05A",
-    "Middle East": "#B5533C",
-    "Middle/South America": "#8E5AA5",
-    "U.S. + Canada": "#3EAFA4",
-    "Oceania": "#D25C9B",
-    "associated countries": "#7A8B99",
-    "widening countries": "#C9A15A",
-    "outermost region": "#5C6BC0",
-    "unknown": "#B0B0B0",
+# Europe, widening countries and associated countries are always shown first,
+# in this order, using a related blue/green color family.
+FIXED_REGION_ORDER = ["Europe", "widening countries", "associated countries"]
+FIXED_REGION_COLORS = {
+    "Europe": "#1B5FA8",
+    "widening countries": "#2F8F8F",
+    "associated countries": "#4CAF6D",
 }
+
+# All other regions are ordered by participant count (descending) and colored
+# along a yellow -> orange gradient, largest region gets the darkest shade.
+OTHER_REGION_DARK = "#D9700E"
+OTHER_REGION_LIGHT = "#FFE29A"
+
 DEFAULT_REGION_COLOR = "#999999"
 
 
-def load_country_counts() -> pd.Series:
-    df = pd.read_csv(PARTICIPANTS_FILE)
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "participants_file",
+        nargs="?",
+        default=str(PARTICIPANTS_FILE),
+        help=(
+            f"Path to the participants CSV with a '{COUNTRY_COLUMN}' column "
+            f"(default: {PARTICIPANTS_FILE})"
+        ),
+    )
+    return parser.parse_args()
+
+
+def load_country_counts(participants_file) -> pd.Series:
+    df = pd.read_csv(participants_file)
     return (
         df[COUNTRY_COLUMN]
         .dropna()
@@ -71,25 +88,47 @@ def build_region_country_table(country_counts: pd.Series, region_lookup: dict):
         for country, count in country_counts.items()
     ]
     table = pd.DataFrame.from_records(records)
-
     region_totals = table.groupby("Region")["Count"].sum().sort_values(ascending=False)
-    table["Region"] = pd.Categorical(table["Region"], categories=region_totals.index, ordered=True)
-    table = table.sort_values(["Region", "Count"], ascending=[True, False]).reset_index(drop=True)
     return table, region_totals
 
 
-def shade_color(hex_color: str, factor: float):
+def interpolate_gradient(dark_hex: str, light_hex: str, n: int):
+    """n colors from dark_hex (i=0) to light_hex (i=n-1), linearly interpolated."""
+    if n <= 1:
+        return [to_rgb(dark_hex)] * n
+    dark, light = to_rgb(dark_hex), to_rgb(light_hex)
+    return [
+        tuple(d + (l - d) * (i / (n - 1)) for d, l in zip(dark, light))
+        for i in range(n)
+    ]
+
+
+def order_regions_and_assign_colors(region_totals: pd.Series):
+    """Europe / widening countries / associated countries first (blue/green),
+    then the rest sorted by count descending (yellow -> orange gradient)."""
+    fixed_present = [r for r in FIXED_REGION_ORDER if r in region_totals.index]
+    other_regions = [r for r in region_totals.index if r not in FIXED_REGION_ORDER]
+
+    region_order = fixed_present + other_regions
+    region_colors = {r: FIXED_REGION_COLORS[r] for r in fixed_present}
+    region_colors.update(
+        zip(other_regions, interpolate_gradient(OTHER_REGION_DARK, OTHER_REGION_LIGHT, len(other_regions)))
+    )
+    return region_order, region_colors
+
+
+def shade_color(base_color, factor: float):
     """Lighten a base color. factor=1.0 -> base color, factor towards 0 -> lighter tint."""
-    r, g, b = (int(hex_color[i : i + 2], 16) / 255 for i in (1, 3, 5))
+    r, g, b = to_rgb(base_color)
     h, l, s = colorsys.rgb_to_hls(r, g, b)
     l = l + (1 - l) * (1 - factor) * 0.75
     return colorsys.hls_to_rgb(h, min(l, 0.93), s)
 
 
-def assign_country_colors(table: pd.DataFrame):
+def assign_country_colors(table: pd.DataFrame, region_colors: dict):
     colors = []
     for region, group in table.groupby("Region", sort=False):
-        base = REGION_COLORS.get(region, DEFAULT_REGION_COLOR)
+        base = region_colors.get(region, DEFAULT_REGION_COLOR)
         n = len(group)
         for i in range(n):
             factor = 1 - (i / max(n, 1)) * 0.7
@@ -107,21 +146,27 @@ def print_step1(country_counts: pd.Series):
 
 
 def print_step2(table: pd.DataFrame, region_totals: pd.Series):
+    total = region_totals.sum()
     print("=" * 60)
-    print("Schritt 2: Teilnehmer je Region (absteigend), je Land innerhalb der Region")
+    print("Schritt 2: Teilnehmer je Region, je Land innerhalb der Region")
+    print("(Europe / widening countries / associated countries zuerst, dann")
+    print("die restlichen Regionen absteigend nach Teilnehmerzahl)")
     print("=" * 60)
     for region in region_totals.index:
-        print(f"\n{region} ({region_totals[region]})")
+        count = region_totals[region]
+        pct = count / total * 100
+        print(f"\n{region} ({count}, {pct:.1f}%)")
         for _, row in table[table["Region"] == region].iterrows():
             print(f"  {row['Country']:28s} {row['Count']:3d}")
-    print(f"\n{'Gesamt':30s} {region_totals.sum():3d}\n")
+    print(f"\n{'Gesamt':30s} {total:3d}\n")
 
 
-def plot_double_pie(table: pd.DataFrame, region_totals: pd.Series):
+def plot_double_pie(table: pd.DataFrame, region_totals: pd.Series, region_colors: dict):
     fig, ax = plt.subplots(figsize=(11, 10), subplot_kw=dict(aspect="equal"))
 
-    region_colors = [REGION_COLORS.get(r, DEFAULT_REGION_COLOR) for r in region_totals.index]
-    country_colors = assign_country_colors(table)
+    total = region_totals.sum()
+    ordered_colors = [region_colors[r] for r in region_totals.index]
+    country_colors = assign_country_colors(table, region_colors)
 
     outer_labels = [f"{c} ({n})" for c, n in zip(table["Country"], table["Count"])]
 
@@ -139,7 +184,7 @@ def plot_double_pie(table: pd.DataFrame, region_totals: pd.Series):
     inner_wedges, _ = ax.pie(
         region_totals,
         radius=1.0,
-        colors=region_colors,
+        colors=ordered_colors,
         wedgeprops=dict(width=0.5, edgecolor="white", linewidth=1.2),
         startangle=90,
         counterclock=False,
@@ -147,7 +192,9 @@ def plot_double_pie(table: pd.DataFrame, region_totals: pd.Series):
 
     # Small region slices would overlap if labeled in-wedge, so regions are
     # explained via a legend instead of inline text.
-    region_legend_labels = [f"{r} ({n})" for r, n in region_totals.items()]
+    region_legend_labels = [
+        f"{r} ({n}, {n / total * 100:.1f}%)" for r, n in region_totals.items()
+    ]
     ax.legend(
         inner_wedges,
         region_legend_labels,
@@ -167,14 +214,21 @@ def plot_double_pie(table: pd.DataFrame, region_totals: pd.Series):
 
 
 def main():
-    country_counts = load_country_counts()
+    args = parse_args()
+
+    country_counts = load_country_counts(args.participants_file)
     print_step1(country_counts)
 
     region_lookup = load_region_lookup()
     table, region_totals = build_region_country_table(country_counts, region_lookup)
-    print_step2(table, region_totals)
 
-    plot_double_pie(table, region_totals)
+    region_order, region_colors = order_regions_and_assign_colors(region_totals)
+    region_totals = region_totals.reindex(region_order)
+    table["Region"] = pd.Categorical(table["Region"], categories=region_order, ordered=True)
+    table = table.sort_values(["Region", "Count"], ascending=[True, False]).reset_index(drop=True)
+
+    print_step2(table, region_totals)
+    plot_double_pie(table, region_totals, region_colors)
 
 
 if __name__ == "__main__":
