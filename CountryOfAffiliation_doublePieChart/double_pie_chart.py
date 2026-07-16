@@ -12,14 +12,18 @@ Steps:
      associated countries, Africa, Asia, Middle East, Middle/South America,
      Oceania, U.S. + Canada. Countries within a region are sorted by
      participant count (descending).
-  3. Plot a nested donut chart: inner ring = regions, outer ring = countries.
-     Countries are colored as shades of their region's base color.
+  3. Plot a nested pie chart with no donut hole: a solid inner disk for
+     regions and a surrounding outer ring for countries (its radial width
+     equal to the inner disk's radius). Countries are colored as shades of
+     their region's base color. Labels are written directly inside each
+     wedge, rotated to read outward from the center.
 """
 import argparse
 import colorsys
 from pathlib import Path
 
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 from matplotlib.colors import to_rgb
 
@@ -154,6 +158,45 @@ def assign_country_colors(table: pd.DataFrame, region_colors: dict):
     return colors
 
 
+def readable_text_color(background_color):
+    """White text on dark wedges, near-black text on light wedges."""
+    r, g, b = to_rgb(background_color)
+    luminance = 0.2126 * r + 0.7152 * g + 0.0722 * b
+    return "white" if luminance < 0.6 else "#1a1a1a"
+
+
+def _normalize_angle(angle_deg: float) -> float:
+    """Map an angle to (-180, 180]."""
+    angle_deg = angle_deg % 360
+    return angle_deg - 360 if angle_deg > 180 else angle_deg
+
+
+def label_wedges(ax, wedges, labels, label_radius, fontsize):
+    """Write each label inside its wedge, rotated to point outward from center
+    (flipped by 180 degrees where needed so text is never upside down)."""
+    for wedge, label in zip(wedges, labels):
+        angle = (wedge.theta1 + wedge.theta2) / 2.0
+        theta = np.deg2rad(angle)
+        x = label_radius * np.cos(theta)
+        y = label_radius * np.sin(theta)
+
+        rotation = _normalize_angle(angle)
+        if rotation > 90 or rotation < -90:
+            rotation = _normalize_angle(rotation + 180)
+
+        ax.text(
+            x,
+            y,
+            label,
+            rotation=rotation,
+            rotation_mode="anchor",
+            ha="center",
+            va="center",
+            fontsize=fontsize,
+            color=readable_text_color(wedge.get_facecolor()),
+        )
+
+
 def print_step1(country_counts: pd.Series):
     print("=" * 60)
     print("Schritt 1: Teilnehmer je Land (alphabetisch)")
@@ -178,6 +221,11 @@ def print_step2(table: pd.DataFrame, region_totals: pd.Series):
     print(f"\n{'Gesamt':30s} {total:3d}\n")
 
 
+INNER_RADIUS = 1.0  # solid inner disk, no donut hole
+OUTER_RING_WIDTH = 1.0  # radial thickness of the outer ring == inner disk's radius
+OUTER_RADIUS = INNER_RADIUS + OUTER_RING_WIDTH
+
+
 def plot_double_pie(table: pd.DataFrame, region_totals: pd.Series, region_colors: dict):
     fig, ax = plt.subplots(figsize=(10, 10), subplot_kw=dict(aspect="equal"))
 
@@ -185,30 +233,29 @@ def plot_double_pie(table: pd.DataFrame, region_totals: pd.Series, region_colors
     ordered_colors = [region_colors[r] for r in region_totals.index]
     country_colors = assign_country_colors(table, region_colors)
 
-    outer_labels = [f"{c} ({n})" for c, n in zip(table["Country"], table["Count"])]
-
-    ax.pie(
+    outer_wedges, _ = ax.pie(
         table["Count"],
-        radius=1.3,
+        radius=OUTER_RADIUS,
         colors=country_colors,
-        labels=outer_labels,
-        labeldistance=1.08,
-        wedgeprops=dict(width=0.3, edgecolor="white", linewidth=1.2),
-        textprops=dict(fontsize=8),
+        wedgeprops=dict(width=OUTER_RING_WIDTH, edgecolor="white", linewidth=1.2),
         startangle=90,
         counterclock=False,
     )
     inner_wedges, _ = ax.pie(
         region_totals,
-        radius=1.0,
+        radius=INNER_RADIUS,
         colors=ordered_colors,
-        wedgeprops=dict(width=0.5, edgecolor="white", linewidth=1.2),
+        wedgeprops=dict(edgecolor="white", linewidth=1.2),
         startangle=90,
         counterclock=False,
     )
 
-    # Small region slices would overlap if labeled in-wedge, so regions are
-    # explained via a legend instead of inline text.
+    outer_labels = [f"{c} ({n})" for c, n in zip(table["Country"], table["Count"])]
+    inner_labels = [f"{r} ({n / total * 100:.1f}%)" for r, n in region_totals.items()]
+
+    label_wedges(ax, outer_wedges, outer_labels, label_radius=(INNER_RADIUS + OUTER_RADIUS) / 2, fontsize=8)
+    label_wedges(ax, inner_wedges, inner_labels, label_radius=INNER_RADIUS * 0.82, fontsize=9)
+
     region_legend_labels = [
         f"{n} ({n / total * 100:.1f}%) {r}" for r, n in region_totals.items()
     ]
@@ -223,8 +270,9 @@ def plot_double_pie(table: pd.DataFrame, region_totals: pd.Series, region_colors
         frameon=False,
     )
 
-    ax.set_xlim(-1.7, 1.7)
-    ax.set_ylim(-1.7, 1.7)
+    margin = OUTER_RADIUS + 0.15
+    ax.set_xlim(-margin, margin)
+    ax.set_ylim(-margin, margin)
     fig.savefig(OUTPUT_FILE, dpi=200, bbox_inches="tight")
     print(f"Chart gespeichert unter: {OUTPUT_FILE}")
 

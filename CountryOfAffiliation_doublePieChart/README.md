@@ -1,10 +1,12 @@
 # CountryOfAffiliation_doublePieChart
 
-Nested (double) pie/donut chart showing participants' country of affiliation,
+Nested double pie chart showing participants' country of affiliation,
 grouped by region.
 
-- Inner ring: region/category totals
-- Outer ring: countries, colored as shades of their region's color
+- Inner disk: region/category totals, labeled in-wedge as `Region (%)`
+- Outer ring: countries, colored as shades of their region's color, labeled
+  in-wedge as `Country (count)`
+- No donut hole; the outer ring's radial width equals the inner disk's radius
 
 ## Data
 
