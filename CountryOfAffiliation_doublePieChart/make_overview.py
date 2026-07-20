@@ -20,7 +20,12 @@ PROJECT_DIR = Path(__file__).parent
 CHARTS_DIR = PROJECT_DIR / "charts"
 OVERVIEW_DIR = PROJECT_DIR / "overview"
 
-EXCLUDED_SHEETS = {"AllParticpants", "ORFEUS_allParticipants", "WP5Participants"}
+EXCLUDED_SHEETS = {
+    "AllParticpants",
+    "ORFEUS_allParticipants",
+    "WP5Participants",
+    "EPOS Data Portal Trg 2 (220524)",
+}
 
 THUMB_SIZE = 480  # each chart is scaled to THUMB_SIZE x THUMB_SIZE
 LABEL_HEIGHT = 56
