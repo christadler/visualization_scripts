@@ -65,6 +65,25 @@ listed at the end.
 `charts/` is gitignored -- these per-event PNGs may contain data not meant
 to be published, so they aren't committed. Regenerate them locally instead.
 
+## Overview montages
+
+`make_overview.py` combines the per-sheet PNGs from `charts/` into grid
+montages, each chart labeled with its sheet name:
+
+```bash
+python make_overview.py
+```
+
+Writes three files into `overview/` (also gitignored, same reasoning as
+`charts/`):
+- `overview_all.png` -- every chart except `AllParticpants`,
+  `ORFEUS_allParticipants` and `WP5Participants` (combined/master sheets
+  that duplicate the individual trainings), alphabetical
+- `overview_epos_trainings.png` -- only sheets whose name starts with "EPOS"
+- `overview_other_trainings.png` -- all remaining (non-EPOS) trainings
+
+Edit `EXCLUDED_SHEETS` in the script to change which sheets are left out.
+
 ## Customizing colors
 
 `FIXED_REGION_COLORS` in `double_pie_chart.py` sets one color per region,
