@@ -9,6 +9,8 @@ grouped by region.
 - Outer ring: countries, colored as shades of their region's color, labeled
   in-wedge as `Country (count)`
 - No donut hole; inner and outer ring labels share the same font size
+- Inner-ring labels are measured after rendering and pulled toward the
+  center if needed, so long region labels never poke into the outer ring
 - A region legend is still built in code but hidden (`legend.set_visible(False)`
   in `plot_double_pie`) since regions are now labeled directly in the ring
 

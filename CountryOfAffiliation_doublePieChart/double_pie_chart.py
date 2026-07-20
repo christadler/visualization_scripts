@@ -179,9 +179,33 @@ def _normalize_angle(angle_deg: float) -> float:
     return angle_deg - 360 if angle_deg > 180 else angle_deg
 
 
-def label_wedges(ax, wedges, labels, label_radius, fontsize):
+def _pull_label_inside(ax, text_obj, max_radius):
+    """After rendering, shrink a label's radius just enough that its rendered
+    (rotated) bounding box no longer crosses max_radius from the center."""
+    renderer = ax.figure.canvas.get_renderer()
+    bbox = text_obj.get_window_extent(renderer=renderer)
+    corners = ax.transData.inverted().transform(
+        [(bbox.x0, bbox.y0), (bbox.x1, bbox.y0), (bbox.x1, bbox.y1), (bbox.x0, bbox.y1)]
+    )
+    farthest = max(np.hypot(cx, cy) for cx, cy in corners)
+    if farthest <= max_radius:
+        return
+    x, y = text_obj.get_position()
+    r = np.hypot(x, y)
+    if r == 0:
+        return
+    new_r = max(r - (farthest - max_radius), 0.05)
+    scale = new_r / r
+    text_obj.set_position((x * scale, y * scale))
+
+
+def label_wedges(ax, wedges, labels, label_radius, fontsize, max_radius=None):
     """Write each label inside its wedge, rotated to point outward from center
-    (flipped by 180 degrees where needed so text is never upside down)."""
+    (flipped by 180 degrees where needed so text is never upside down). If
+    max_radius is given, labels whose rendered extent would cross it (e.g.
+    long region names poking into the next ring) are pulled closer to the
+    center just enough to fit."""
+    text_objects = []
     for wedge, label in zip(wedges, labels):
         angle = (wedge.theta1 + wedge.theta2) / 2.0
         theta = np.deg2rad(angle)
@@ -192,17 +216,24 @@ def label_wedges(ax, wedges, labels, label_radius, fontsize):
         if rotation > 90 or rotation < -90:
             rotation = _normalize_angle(rotation + 180)
 
-        ax.text(
-            x,
-            y,
-            label,
-            rotation=rotation,
-            rotation_mode="anchor",
-            ha="center",
-            va="center",
-            fontsize=fontsize,
-            color=readable_text_color(wedge.get_facecolor()),
+        text_objects.append(
+            ax.text(
+                x,
+                y,
+                label,
+                rotation=rotation,
+                rotation_mode="anchor",
+                ha="center",
+                va="center",
+                fontsize=fontsize,
+                color=readable_text_color(wedge.get_facecolor()),
+            )
         )
+
+    if max_radius is not None:
+        ax.figure.canvas.draw()  # ensure a renderer exists to measure text extents
+        for text_obj in text_objects:
+            _pull_label_inside(ax, text_obj, max_radius)
 
 
 def print_step1(country_counts: pd.Series):
@@ -272,6 +303,7 @@ def plot_double_pie(table: pd.DataFrame, region_totals: pd.Series, region_colors
     label_wedges(
         ax, inner_wedges, inner_labels,
         label_radius=INNER_RADIUS * 0.82, fontsize=WEDGE_LABEL_FONTSIZE,
+        max_radius=INNER_RADIUS - 0.03,
     )
 
     # Legend is still built (e.g. for reuse/export) but hidden from the
