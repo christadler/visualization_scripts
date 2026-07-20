@@ -62,6 +62,9 @@ where the column is present but empty (overview/summary sheets, the
 `Countries` lookup sheet, differently-shaped surveys, etc.), are skipped and
 listed at the end.
 
+`charts/` is gitignored -- these per-event PNGs may contain data not meant
+to be published, so they aren't committed. Regenerate them locally instead.
+
 ## Customizing colors
 
 `FIXED_REGION_COLORS` in `double_pie_chart.py` sets one color per region,
