@@ -19,6 +19,8 @@ grouped by region.
 - `data/SDL_Trg.csv` — participant export with a `Country of Affiliation` column
 - `data/Countries.csv` — lookup table mapping each country to a region/category
   (`Country`, `Category`, `Color`)
+- `data/geoI_Participants_test.xlsx` — full workbook with one sheet per
+  training/event, used by `generate_all_charts.py` (see below)
 
 Country matching against `Countries.csv` is case-insensitive; unmatched
 countries fall back to the `unknown` region.
@@ -44,6 +46,43 @@ The script prints two tables to the console before plotting:
 
 It then saves the chart to `country_of_affiliation_double_pie_chart.png`.
 The chart has no title and no visible legend.
+
+## Generating a chart per sheet from a workbook
+
+`generate_all_charts.py` processes every sheet of an xlsx workbook in one go:
+
+```bash
+python generate_all_charts.py [path/to/workbook.xlsx] [output_dir]
+```
+
+Defaults to `data/geoI_Participants_test.xlsx` and `charts/`. For each sheet
+with a `Country of Affiliation` column (any casing) that actually has data,
+it writes `<output_dir>/<SheetName>.png`. Sheets without that column, or
+where the column is present but empty (overview/summary sheets, the
+`Countries` lookup sheet, differently-shaped surveys, etc.), are skipped and
+listed at the end.
+
+`charts/` is gitignored -- these per-event PNGs may contain data not meant
+to be published, so they aren't committed. Regenerate them locally instead.
+
+## Overview montages
+
+`make_overview.py` combines the per-sheet PNGs from `charts/` into grid
+montages, each chart labeled with its sheet name:
+
+```bash
+python make_overview.py
+```
+
+Writes three files into `overview/` (also gitignored, same reasoning as
+`charts/`):
+- `overview_all.png` -- every chart except `AllParticpants`,
+  `ORFEUS_allParticipants` and `WP5Participants` (combined/master sheets
+  that duplicate the individual trainings), alphabetical
+- `overview_epos_trainings.png` -- only sheets whose name starts with "EPOS"
+- `overview_other_trainings.png` -- all remaining (non-EPOS) trainings
+
+Edit `EXCLUDED_SHEETS` in the script to change which sheets are left out.
 
 ## Customizing colors
 

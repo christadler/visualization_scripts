@@ -98,15 +98,19 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def load_country_counts(participants_file) -> pd.Series:
-    df = pd.read_csv(participants_file)
+def country_counts_from_series(country_series: pd.Series) -> pd.Series:
     return (
-        df[COUNTRY_COLUMN]
-        .dropna()
+        country_series.dropna()
+        .astype(str)
         .str.strip()
         .value_counts()
         .sort_index()
     )
+
+
+def load_country_counts(participants_file) -> pd.Series:
+    df = pd.read_csv(participants_file)
+    return country_counts_from_series(df[COUNTRY_COLUMN])
 
 
 def load_region_lookup() -> dict:
@@ -286,7 +290,7 @@ OUTER_RADIUS = INNER_RADIUS + OUTER_RING_WIDTH
 WEDGE_LABEL_FONTSIZE = 9  # same size for inner and outer ring labels
 
 
-def plot_double_pie(table: pd.DataFrame, region_totals: pd.Series, region_colors: dict):
+def plot_double_pie(table: pd.DataFrame, region_totals: pd.Series, region_colors: dict, output_path=OUTPUT_FILE):
     fig, ax = plt.subplots(figsize=(10, 10), subplot_kw=dict(aspect="equal"))
 
     total = region_totals.sum()
@@ -358,8 +362,22 @@ def plot_double_pie(table: pd.DataFrame, region_totals: pd.Series, region_colors
         frameon=False,
     )
     legend.set_visible(False)
-    fig.savefig(OUTPUT_FILE, dpi=200, bbox_inches="tight")
-    print(f"Chart gespeichert unter: {OUTPUT_FILE}")
+    fig.savefig(output_path, dpi=200, bbox_inches="tight")
+    plt.close(fig)
+
+
+def build_chart(country_counts: pd.Series, region_lookup: dict, output_path):
+    """Full pipeline from raw country counts to a saved chart PNG. Returns
+    (table, region_totals) in case the caller wants to print/inspect them."""
+    table, region_totals = build_region_country_table(country_counts, region_lookup)
+
+    region_order, region_colors = order_regions_and_assign_colors(region_totals)
+    region_totals = region_totals.reindex(region_order)
+    table["Region"] = pd.Categorical(table["Region"], categories=region_order, ordered=True)
+    table = table.sort_values(["Region", "Count"], ascending=[True, False]).reset_index(drop=True)
+
+    plot_double_pie(table, region_totals, region_colors, output_path=output_path)
+    return table, region_totals
 
 
 def main():
@@ -369,15 +387,10 @@ def main():
     print_step1(country_counts)
 
     region_lookup = load_region_lookup()
-    table, region_totals = build_region_country_table(country_counts, region_lookup)
-
-    region_order, region_colors = order_regions_and_assign_colors(region_totals)
-    region_totals = region_totals.reindex(region_order)
-    table["Region"] = pd.Categorical(table["Region"], categories=region_order, ordered=True)
-    table = table.sort_values(["Region", "Count"], ascending=[True, False]).reset_index(drop=True)
+    table, region_totals = build_chart(country_counts, region_lookup, OUTPUT_FILE)
 
     print_step2(table, region_totals)
-    plot_double_pie(table, region_totals, region_colors)
+    print(f"Chart gespeichert unter: {OUTPUT_FILE}")
 
 
 if __name__ == "__main__":

@@ -216,3 +216,8 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Generated chart images (not meant to be published) -- delivered as file
+# uploads instead of being committed
+CountryOfAffiliation_doublePieChart/charts/
+CountryOfAffiliation_doublePieChart/overview/
