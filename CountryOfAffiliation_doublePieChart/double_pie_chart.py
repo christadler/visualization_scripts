@@ -260,7 +260,7 @@ def print_step2(table: pd.DataFrame, region_totals: pd.Series):
     print(f"\n{'Gesamt':30s} {total:3d}\n")
 
 
-INNER_RADIUS = 1.2  # solid inner disk, no donut hole
+INNER_RADIUS = 1.5  # solid inner disk, no donut hole
 OUTER_RING_WIDTH = 1.0  # radial thickness of the outer ring
 OUTER_RADIUS = INNER_RADIUS + OUTER_RING_WIDTH
 WEDGE_LABEL_FONTSIZE = 9  # same size for inner and outer ring labels
