@@ -56,3 +56,12 @@ not listed there falls back to a grey gradient, sorted by count.
 Each country inherits a lighter/darker shade of its region's color (see
 `assign_country_colors`), so changing a region's base color updates all of
 its countries consistently.
+
+## Associated-countries label highlighting
+
+Within "associated countries", `ASSOCIATED_COUNTRIES_HIGHLIGHT` (Iceland,
+Israel, New Zealand, Norway, United Kingdom) are counted a bit differently
+and get yellow label text (`ASSOCIATED_COUNTRIES_HIGHLIGHT_COLOR`); every
+other associated country's label is a very dark green instead (the
+widening-countries green, darkened via `darken_color`). This only changes
+label text color, not the wedge fill.

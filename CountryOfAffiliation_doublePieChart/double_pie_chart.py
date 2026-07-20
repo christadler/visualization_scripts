@@ -76,6 +76,13 @@ INNER_LABEL_ABBREVIATIONS = {
     "Middle/South America": "Middle/South Am.",
 }
 
+# Within "associated countries", these are counted a bit differently and are
+# called out with yellow label text; every other associated country is
+# labeled in a very dark green (a darkened shade of the widening-countries
+# green) instead of the usual contrast-based (white/near-black) label color.
+ASSOCIATED_COUNTRIES_HIGHLIGHT = {"Iceland", "Israel", "New Zealand", "Norway", "United Kingdom"}
+ASSOCIATED_COUNTRIES_HIGHLIGHT_COLOR = "#FFD400"
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -155,6 +162,13 @@ def shade_color(base_color, factor: float):
     return colorsys.hls_to_rgb(h, min(l, 0.93), s)
 
 
+def darken_color(base_color, amount: float):
+    """Darken a base color by reducing its lightness by `amount` (0-1)."""
+    r, g, b = to_rgb(base_color)
+    h, l, s = colorsys.rgb_to_hls(r, g, b)
+    return colorsys.hls_to_rgb(h, l * (1 - amount), s)
+
+
 def assign_country_colors(table: pd.DataFrame, region_colors: dict):
     colors = []
     for region, group in table.groupby("Region", sort=False):
@@ -179,14 +193,19 @@ def _normalize_angle(angle_deg: float) -> float:
     return angle_deg - 360 if angle_deg > 180 else angle_deg
 
 
-def label_wedges(ax, wedges, labels, label_radius, fontsize, max_radius=None):
+def label_wedges(ax, wedges, labels, label_radius, fontsize, max_radius=None, text_colors=None):
     """Write each label inside its wedge, rotated to point outward from center
     (flipped by 180 degrees where needed so text is never upside down). If
     max_radius is given, a label whose outward tip would cross it (e.g. a
     long region name poking into the next ring) is pulled toward the center
-    just enough to fit, based on its exact (unrotated) rendered text width."""
+    just enough to fit, based on its exact (unrotated) rendered text width.
+    text_colors, if given, is a list parallel to labels; a non-None entry
+    overrides the default contrast-based (white/near-black) label color."""
+    if text_colors is None:
+        text_colors = [None] * len(labels)
+
     placements = []  # (text_obj, x, y, rotation)
-    for wedge, label in zip(wedges, labels):
+    for wedge, label, text_color in zip(wedges, labels, text_colors):
         angle = (wedge.theta1 + wedge.theta2) / 2.0
         theta = np.deg2rad(angle)
         x = label_radius * np.cos(theta)
@@ -195,6 +214,9 @@ def label_wedges(ax, wedges, labels, label_radius, fontsize, max_radius=None):
         rotation = _normalize_angle(angle)
         if rotation > 90 or rotation < -90:
             rotation = _normalize_angle(rotation + 180)
+
+        if text_color is None:
+            text_color = readable_text_color(wedge.get_facecolor())
 
         # Placed unrotated first so its rendered width can be measured
         # exactly; the real rotation is applied once positioning is final.
@@ -207,7 +229,7 @@ def label_wedges(ax, wedges, labels, label_radius, fontsize, max_radius=None):
             ha="center",
             va="center",
             fontsize=fontsize,
-            color=readable_text_color(wedge.get_facecolor()),
+            color=text_color,
         )
         placements.append((text_obj, x, y, rotation))
 
@@ -302,9 +324,17 @@ def plot_double_pie(table: pd.DataFrame, region_totals: pd.Series, region_colors
         for r, n in region_totals.items()
     ]
 
+    associated_dark_green = darken_color(FIXED_REGION_COLORS["widening countries"], amount=0.75)
+    outer_text_colors = [
+        ASSOCIATED_COUNTRIES_HIGHLIGHT_COLOR if country in ASSOCIATED_COUNTRIES_HIGHLIGHT else associated_dark_green
+        if region == "associated countries" else None
+        for country, region in zip(table["Country"], table["Region"])
+    ]
+
     label_wedges(
         ax, outer_wedges, outer_labels,
         label_radius=(INNER_RADIUS + OUTER_RADIUS) / 2, fontsize=WEDGE_LABEL_FONTSIZE,
+        text_colors=outer_text_colors,
     )
     label_wedges(
         ax, inner_wedges, inner_labels,
