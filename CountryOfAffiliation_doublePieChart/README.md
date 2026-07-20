@@ -4,9 +4,13 @@ Nested double pie chart showing participants' country of affiliation,
 grouped by region.
 
 - Inner disk: region/category totals, labeled in-wedge as `Region (%)`
+  (some region names are abbreviated in this label only, see
+  `INNER_LABEL_ABBREVIATIONS`)
 - Outer ring: countries, colored as shades of their region's color, labeled
   in-wedge as `Country (count)`
-- No donut hole; the outer ring's radial width equals the inner disk's radius
+- No donut hole; inner and outer ring labels share the same font size
+- A region legend is still built in code but hidden (`legend.set_visible(False)`
+  in `plot_double_pie`) since regions are now labeled directly in the ring
 
 ## Data
 
@@ -37,8 +41,7 @@ The script prints two tables to the console before plotting:
    are sorted by participant count (descending).
 
 It then saves the chart to `country_of_affiliation_double_pie_chart.png`.
-The chart has no title; the legend ("Applications per Region", bottom left)
-lists each region as `<count> (<percentage>) <region name>`.
+The chart has no title and no visible legend.
 
 ## Customizing colors
 

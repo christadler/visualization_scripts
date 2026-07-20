@@ -68,6 +68,14 @@ OTHER_REGION_LIGHT = "#D4D4D4"
 
 DEFAULT_REGION_COLOR = "#999999"
 
+# Shortened region names used only for the inner-ring in-wedge labels; the
+# legend and console output keep the full names.
+INNER_LABEL_ABBREVIATIONS = {
+    "widening countries": "widening c.",
+    "associated countries": "associated c.",
+    "Middle/South America": "Middle/South Am.",
+}
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -221,9 +229,10 @@ def print_step2(table: pd.DataFrame, region_totals: pd.Series):
     print(f"\n{'Gesamt':30s} {total:3d}\n")
 
 
-INNER_RADIUS = 1.0  # solid inner disk, no donut hole
-OUTER_RING_WIDTH = 1.0  # radial thickness of the outer ring == inner disk's radius
+INNER_RADIUS = 1.2  # solid inner disk, no donut hole
+OUTER_RING_WIDTH = 1.0  # radial thickness of the outer ring
 OUTER_RADIUS = INNER_RADIUS + OUTER_RING_WIDTH
+WEDGE_LABEL_FONTSIZE = 9  # same size for inner and outer ring labels
 
 
 def plot_double_pie(table: pd.DataFrame, region_totals: pd.Series, region_colors: dict):
@@ -251,15 +260,26 @@ def plot_double_pie(table: pd.DataFrame, region_totals: pd.Series, region_colors
     )
 
     outer_labels = [f"{c} ({n})" for c, n in zip(table["Country"], table["Count"])]
-    inner_labels = [f"{r} ({n / total * 100:.1f}%)" for r, n in region_totals.items()]
+    inner_labels = [
+        f"{INNER_LABEL_ABBREVIATIONS.get(r, r)} ({n / total * 100:.1f}%)"
+        for r, n in region_totals.items()
+    ]
 
-    label_wedges(ax, outer_wedges, outer_labels, label_radius=(INNER_RADIUS + OUTER_RADIUS) / 2, fontsize=8)
-    label_wedges(ax, inner_wedges, inner_labels, label_radius=INNER_RADIUS * 0.82, fontsize=9)
+    label_wedges(
+        ax, outer_wedges, outer_labels,
+        label_radius=(INNER_RADIUS + OUTER_RADIUS) / 2, fontsize=WEDGE_LABEL_FONTSIZE,
+    )
+    label_wedges(
+        ax, inner_wedges, inner_labels,
+        label_radius=INNER_RADIUS * 0.82, fontsize=WEDGE_LABEL_FONTSIZE,
+    )
 
+    # Legend is still built (e.g. for reuse/export) but hidden from the
+    # rendered chart, since regions are now labeled directly in the ring.
     region_legend_labels = [
         f"{n} ({n / total * 100:.1f}%) {r}" for r, n in region_totals.items()
     ]
-    ax.legend(
+    legend = ax.legend(
         inner_wedges,
         region_legend_labels,
         title="Applications per Region",
@@ -269,6 +289,7 @@ def plot_double_pie(table: pd.DataFrame, region_totals: pd.Series, region_colors
         title_fontsize=10,
         frameon=False,
     )
+    legend.set_visible(False)
 
     margin = OUTER_RADIUS + 0.15
     ax.set_xlim(-margin, margin)
