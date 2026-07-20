@@ -19,6 +19,8 @@ grouped by region.
 - `data/SDL_Trg.csv` — participant export with a `Country of Affiliation` column
 - `data/Countries.csv` — lookup table mapping each country to a region/category
   (`Country`, `Category`, `Color`)
+- `data/geoI_Participants_test.xlsx` — full workbook with one sheet per
+  training/event, used by `generate_all_charts.py` (see below)
 
 Country matching against `Countries.csv` is case-insensitive; unmatched
 countries fall back to the `unknown` region.
@@ -44,6 +46,21 @@ The script prints two tables to the console before plotting:
 
 It then saves the chart to `country_of_affiliation_double_pie_chart.png`.
 The chart has no title and no visible legend.
+
+## Generating a chart per sheet from a workbook
+
+`generate_all_charts.py` processes every sheet of an xlsx workbook in one go:
+
+```bash
+python generate_all_charts.py [path/to/workbook.xlsx] [output_dir]
+```
+
+Defaults to `data/geoI_Participants_test.xlsx` and `charts/`. For each sheet
+with a `Country of Affiliation` column (any casing) that actually has data,
+it writes `<output_dir>/<SheetName>.png`. Sheets without that column, or
+where the column is present but empty (overview/summary sheets, the
+`Countries` lookup sheet, differently-shaped surveys, etc.), are skipped and
+listed at the end.
 
 ## Customizing colors
 
