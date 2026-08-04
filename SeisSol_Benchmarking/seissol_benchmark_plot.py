@@ -29,13 +29,6 @@ ORDER_COLORS = {
 }
 ORDER_LABELS = {"o5": "order5", "o4": "order4"}
 
-# A single measured point to call out: order, node count, color, marker size.
-HIGHLIGHT_ORDER = "o4"
-HIGHLIGHT_NODE = 48
-HIGHLIGHT_COLOR = "#274E13"  # dark green, more saturated than the o4 line color
-HIGHLIGHT_MARKERSIZE = 14
-HIGHLIGHT_MARKEREDGEWIDTH = 3
-
 
 def load_data(csv_path=DATA_FILE) -> pd.DataFrame:
     return pd.read_csv(csv_path)
@@ -97,14 +90,6 @@ def make_plot(df: pd.DataFrame, save_pdf=True, save_png=True):
             linestyle="--", marker="o", markersize=5,
             color=colors["ideal"], label=f"ideal ({label})",
         )
-
-        if order == HIGHLIGHT_ORDER and HIGHLIGHT_NODE in measured.index:
-            ax.plot(
-                HIGHLIGHT_NODE, measured[HIGHLIGHT_NODE],
-                marker="x", markersize=HIGHLIGHT_MARKERSIZE,
-                markeredgewidth=HIGHLIGHT_MARKEREDGEWIDTH,
-                color=HIGHLIGHT_COLOR, linestyle="none", zorder=5,
-            )
 
     time_ticks = [50, 60, 70, 80, 90, 100, 200, 300, 400, 500]
     style_axes(ax, nodes, time_ticks)
