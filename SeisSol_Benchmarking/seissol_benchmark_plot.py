@@ -137,13 +137,13 @@ def make_efficiency_plot(df: pd.DataFrame, save_pdf=True, save_png=True):
             color=color, label=label,
         )
 
-    ax.axhline(100, color="#999999", linewidth=1, linestyle="--")
-
     style_node_axis(ax, nodes)
-    ax.set_ylim(0, 110)
-    ax.set_yticks(range(0, 101, 20))
+    ax.set_ylim(50, 100)
+    ax.yaxis.set_major_locator(FixedLocator(range(50, 101, 10)))
+    ax.yaxis.set_minor_locator(FixedLocator(range(55, 100, 10)))
     ax.set_axisbelow(True)
-    ax.grid(True, which="major", axis="y", color="#CCCCCC", linewidth=0.8)
+    ax.grid(True, which="major", axis="y", linestyle="-", color="#CCCCCC", linewidth=0.8)
+    ax.grid(True, which="minor", axis="y", linestyle="--", color="#DDDDDD", linewidth=0.6)
     for spine in ("top", "right"):
         ax.spines[spine].set_visible(False)
 
