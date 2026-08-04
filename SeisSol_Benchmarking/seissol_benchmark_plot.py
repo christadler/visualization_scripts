@@ -69,12 +69,9 @@ def style_axes(ax, nodes: list[int], time_ticks: list[int]):
 
 def make_plot(df: pd.DataFrame, save_pdf=True, save_png=True):
     nodes = node_columns(df)
-    version = df["Version"].iloc[0]
-    precision = df["sp/dp"].iloc[0]
 
     fig, ax = plt.subplots(figsize=(6.5, 5.5), constrained_layout=True)
 
-    all_times = []
     for _, row in df.iterrows():
         order = row["order"]
         colors = ORDER_COLORS[order]
@@ -82,25 +79,28 @@ def make_plot(df: pd.DataFrame, save_pdf=True, save_png=True):
 
         measured = measured_series(row, nodes)
         ideal = ideal_series(measured)
-        all_times.extend(measured.tolist())
 
         ax.plot(
             measured.index, measured.values,
-            linestyle="--", marker="o", markersize=5,
+            linestyle="-", marker="o", markersize=5,
             color=colors["measured"], label=f"measured ({label})",
         )
         ax.plot(
             ideal.index, ideal.values,
-            linestyle="-", marker="o", markersize=5,
+            linestyle="--", marker="o", markersize=5,
             color=colors["ideal"], label=f"ideal ({label})",
         )
 
     time_ticks = [50, 60, 70, 80, 90, 100, 200, 300, 400, 500]
     style_axes(ax, nodes, time_ticks)
 
+    for minutes, ref_label in [(60, "1 hour"), (120, "2 hours")]:
+        ax.axhline(minutes, color="#999999", linewidth=1, linestyle="--")
+        ax.text(nodes[-1], minutes * 1.03, ref_label, fontsize=8, color="#999999", ha="right", va="bottom")
+
     ax.set_xlabel("number of nodes")
     ax.set_ylabel("Simulation time (min)")
-    ax.set_title(f"SuperMUC-NG Phase 1, strong scaling (Alto Tiberina catalog, {version} {precision})")
+    ax.set_title("Strong Scaling (AltoTiberina Catalog, SuperMUC-NG-Phase1, dp, SeisSol v.1.3.1)")
 
     ax.legend(loc="upper right", frameon=False)
 
