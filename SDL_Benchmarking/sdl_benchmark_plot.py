@@ -90,6 +90,10 @@ def make_plot(df: pd.DataFrame, save_pdf=True, save_png=True):
     ax.set_xticklabels(labels)
     style_axes(ax)
 
+    for y_ref, ref_label in [(60, "1 min"), (600, "10 min")]:
+        ax.axhline(y_ref, color="#999999", linewidth=1, linestyle="--")
+        ax.text(x[-1] + 0.5, y_ref * 1.05, ref_label, fontsize=8, color="#999999", ha="right", va="bottom")
+
     ax.legend(ncol=3, loc="upper left", frameon=False, columnspacing=1.0, handlelength=1.2)
     ax.set_title("SDL transfer performance (CLI v0.13.55)", loc="left", pad=10)
 
