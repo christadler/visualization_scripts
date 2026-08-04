@@ -29,6 +29,12 @@ ORDER_COLORS = {
 }
 ORDER_LABELS = {"o5": "order5", "o4": "order4"}
 
+# A single measured point to call out: order, node count, color, marker size.
+HIGHLIGHT_ORDER = "o4"
+HIGHLIGHT_NODE = 48
+HIGHLIGHT_COLOR = "#FF9900"
+HIGHLIGHT_MARKERSIZE = 9
+
 
 def load_data(csv_path=DATA_FILE) -> pd.DataFrame:
     return pd.read_csv(csv_path)
@@ -51,8 +57,8 @@ def ideal_series(measured: pd.Series) -> pd.Series:
 
 
 def style_axes(ax, nodes: list[int], time_ticks: list[int]):
-    """Linear, evenly-spaced x-axis (node count); log y-axis with
-    plain-number tick labels, like the reference chart."""
+    """Log-log axes with plain-number tick labels, like the reference chart."""
+    ax.set_xscale("log")
     ax.set_yscale("log")
 
     ax.xaxis.set_major_locator(FixedLocator(nodes))
@@ -91,10 +97,17 @@ def make_plot(df: pd.DataFrame, save_pdf=True, save_png=True):
             color=colors["ideal"], label=f"ideal ({label})",
         )
 
+        if order == HIGHLIGHT_ORDER and HIGHLIGHT_NODE in measured.index:
+            ax.plot(
+                HIGHLIGHT_NODE, measured[HIGHLIGHT_NODE],
+                marker="o", markersize=HIGHLIGHT_MARKERSIZE,
+                color=HIGHLIGHT_COLOR, linestyle="none", zorder=5,
+            )
+
     time_ticks = [50, 60, 70, 80, 90, 100, 200, 300, 400, 500]
     style_axes(ax, nodes, time_ticks)
 
-    for minutes, ref_label in [(60, "1 hour"), (120, "2 hours")]:
+    for minutes, ref_label in [(60, "1h"), (90, "1.5h"), (120, "2h")]:
         ax.axhline(minutes, color="#999999", linewidth=1, linestyle="--")
         ax.text(nodes[-1], minutes * 1.03, ref_label, fontsize=8, color="#999999", ha="right", va="bottom")
 
