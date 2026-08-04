@@ -51,8 +51,8 @@ def ideal_series(measured: pd.Series) -> pd.Series:
 
 
 def style_axes(ax, nodes: list[int], time_ticks: list[int]):
-    """Log-log axes with plain-number tick labels, like the reference chart."""
-    ax.set_xscale("log")
+    """Linear, evenly-spaced x-axis (node count); log y-axis with
+    plain-number tick labels, like the reference chart."""
     ax.set_yscale("log")
 
     ax.xaxis.set_major_locator(FixedLocator(nodes))
