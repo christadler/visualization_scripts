@@ -94,7 +94,7 @@ def make_plot(df: pd.DataFrame, save_pdf=True, save_png=True):
             color=colors["ideal"], label=f"ideal ({label})",
         )
 
-    time_ticks = list(range(30, 481, 30))
+    time_ticks = [30, 60, 90, 120, 180, 240, 300, 360, 420]
     style_axes(ax, nodes, time_ticks)
 
     ax.set_xlabel("number of nodes")
