@@ -1,7 +1,9 @@
 """
 SeisSol Strong Scaling Benchmark
-Log-log strong-scaling chart (measured vs. ideal) in the style of the LUMI-G
-reference chart, colored by discretization order.
+Two charts, colored by discretization order:
+  - Log-log strong-scaling chart (measured vs. ideal), in the style of the
+    LUMI-G reference chart.
+  - Parallel efficiency (ideal time / measured time, in %) vs. node count.
 
 Reads data/SeisSol_Benchmarking_AltoTiberinaCatalog_SuperMUCNGPhase1.csv:
 two rows per (version, precision, order) -- "Total job time (Slurm) [mins]"
@@ -17,7 +19,8 @@ from matplotlib.ticker import FixedFormatter, FixedLocator, NullLocator
 
 PROJECT_DIR = Path(__file__).parent
 DATA_FILE = PROJECT_DIR / "data" / "SeisSol_Benchmarking_AltoTiberinaCatalog_SuperMUCNGPhase1.csv"
-OUTPUT_FILE = PROJECT_DIR / "seissol_benchmark"
+SCALING_OUTPUT_FILE = PROJECT_DIR / "seissol_benchmark"
+EFFICIENCY_OUTPUT_FILE = PROJECT_DIR / "seissol_efficiency"
 
 META_COLUMNS = ["Version", "sp/dp", "order", "No. of Nodes"]
 
@@ -50,14 +53,20 @@ def metric_row(df: pd.DataFrame, order: str, metric: str) -> pd.Series:
     return df[(df["order"] == order) & (df["No. of Nodes"] == metric)].iloc[0]
 
 
-def style_axes(ax, nodes: list[int], time_ticks: list[int]):
-    """Log-log axes with plain-number tick labels, like the reference chart."""
+def style_node_axis(ax, nodes: list[int]):
+    """Log x-axis (node count) with plain-number tick labels, like the
+    reference chart."""
     ax.set_xscale("log")
-    ax.set_yscale("log")
-
     ax.xaxis.set_major_locator(FixedLocator(nodes))
     ax.xaxis.set_major_formatter(FixedFormatter([str(n) for n in nodes]))
     ax.xaxis.set_minor_locator(NullLocator())
+    ax.set_xlabel("number of nodes")
+
+
+def style_axes(ax, nodes: list[int], time_ticks: list[int]):
+    """Log-log axes with plain-number tick labels, like the reference chart."""
+    style_node_axis(ax, nodes)
+    ax.set_yscale("log")
 
     ax.yaxis.set_major_locator(FixedLocator(time_ticks))
     ax.yaxis.set_major_formatter(FixedFormatter([str(t) for t in time_ticks]))
@@ -96,16 +105,57 @@ def make_plot(df: pd.DataFrame, save_pdf=True, save_png=True):
     time_ticks = [30, 60, 90, 120, 180, 240, 300, 360, 420]
     style_axes(ax, nodes, time_ticks)
 
-    ax.set_xlabel("number of nodes")
     ax.set_ylabel("Simulation time (min)")
     ax.set_title("Strong Scaling (AltoTiberina Catalog, SuperMUC-NG-Phase1, dp, SeisSol v.1.3.1)")
 
     ax.legend(loc="upper right", frameon=True, facecolor="white", edgecolor="none", framealpha=1)
 
     if save_pdf:
-        fig.savefig(f"{OUTPUT_FILE}.pdf", bbox_inches="tight")
+        fig.savefig(f"{SCALING_OUTPUT_FILE}.pdf", bbox_inches="tight")
     if save_png:
-        fig.savefig(f"{OUTPUT_FILE}.png", dpi=300, bbox_inches="tight")
+        fig.savefig(f"{SCALING_OUTPUT_FILE}.png", dpi=300, bbox_inches="tight")
+    plt.close(fig)
+
+
+def make_efficiency_plot(df: pd.DataFrame, save_pdf=True, save_png=True):
+    """Parallel efficiency (%) = ideal time / measured time, per order."""
+    nodes = node_columns(df)
+
+    fig, ax = plt.subplots(figsize=(6.5, 5.5), constrained_layout=True)
+
+    for order in df["order"].unique():
+        color = ORDER_COLORS[order]["measured"]
+        label = ORDER_LABELS[order]
+
+        measured = row_series(metric_row(df, order, MEASURED_METRIC), nodes)
+        ideal = row_series(metric_row(df, order, IDEAL_METRIC), nodes)
+        efficiency = ideal / measured * 100
+
+        ax.plot(
+            efficiency.index, efficiency.values,
+            linestyle="-", marker="o", markersize=5,
+            color=color, label=label,
+        )
+
+    ax.axhline(100, color="#999999", linewidth=1, linestyle="--")
+
+    style_node_axis(ax, nodes)
+    ax.set_ylim(0, 110)
+    ax.set_yticks(range(0, 101, 20))
+    ax.set_axisbelow(True)
+    ax.grid(True, which="major", axis="y", color="#CCCCCC", linewidth=0.8)
+    for spine in ("top", "right"):
+        ax.spines[spine].set_visible(False)
+
+    ax.set_ylabel("Parallel efficiency (%)")
+    ax.set_title("Parallel Efficiency (AltoTiberina Catalog, SuperMUC-NG-Phase1, dp, SeisSol v.1.3.1)")
+
+    ax.legend(loc="lower left", frameon=True, facecolor="white", edgecolor="none", framealpha=1)
+
+    if save_pdf:
+        fig.savefig(f"{EFFICIENCY_OUTPUT_FILE}.pdf", bbox_inches="tight")
+    if save_png:
+        fig.savefig(f"{EFFICIENCY_OUTPUT_FILE}.png", dpi=300, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -124,6 +174,7 @@ def main():
 
     df = load_data()
     make_plot(df)
+    make_efficiency_plot(df)
 
 
 if __name__ == "__main__":

@@ -1,9 +1,13 @@
 # SeisSol_Benchmarking
 
-Log-log strong-scaling chart (measured vs. ideal) for SeisSol runs, styled
-after a LUMI-G reference chart: solid lines with markers for measured
-runtime, dashed lines for ideal (perfect linear) scaling, plain-number tick
-labels on both log axes.
+Two charts for SeisSol runs, colored by discretization order:
+
+- A log-log strong-scaling chart (measured vs. ideal), styled after a
+  LUMI-G reference chart: solid lines with markers for measured runtime,
+  dashed lines for ideal (perfect linear) scaling, plain-number tick
+  labels on both log axes.
+- A parallel efficiency chart (ideal time / measured time, in %) vs. node
+  count, with a dashed 100% reference line.
 
 ## Data
 
@@ -21,7 +25,8 @@ pip install -r requirements.txt
 python seissol_benchmark_plot.py
 ```
 
-Writes `seissol_benchmark.png` and `seissol_benchmark.pdf`.
+Writes `seissol_benchmark.png`/`.pdf` (strong scaling) and
+`seissol_efficiency.png`/`.pdf` (parallel efficiency).
 
 ## Customizing colors
 
