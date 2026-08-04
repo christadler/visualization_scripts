@@ -63,6 +63,9 @@ def style_axes(ax, nodes: list[int], time_ticks: list[int]):
     ax.yaxis.set_major_formatter(FixedFormatter([str(t) for t in time_ticks]))
     ax.yaxis.set_minor_locator(NullLocator())
 
+    ax.set_axisbelow(True)
+    ax.grid(True, which="major", axis="y", color="#CCCCCC", linewidth=0.8)
+
     for spine in ("top", "right"):
         ax.spines[spine].set_visible(False)
 
@@ -91,12 +94,8 @@ def make_plot(df: pd.DataFrame, save_pdf=True, save_png=True):
             color=colors["ideal"], label=f"ideal ({label})",
         )
 
-    time_ticks = [50, 60, 70, 80, 90, 100, 200, 300, 400, 500]
+    time_ticks = list(range(30, 481, 30))
     style_axes(ax, nodes, time_ticks)
-
-    for minutes, ref_label in [(60, "1h"), (90, "1.5h"), (120, "2h")]:
-        ax.axhline(minutes, color="#999999", linewidth=1, linestyle="--")
-        ax.text(nodes[-1], minutes * 1.03, ref_label, fontsize=8, color="#999999", ha="right", va="bottom")
 
     ax.set_xlabel("number of nodes")
     ax.set_ylabel("Simulation time (min)")
