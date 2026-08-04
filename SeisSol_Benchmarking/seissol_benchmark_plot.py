@@ -4,10 +4,9 @@ Log-log strong-scaling chart (measured vs. ideal) in the style of the LUMI-G
 reference chart, colored by discretization order.
 
 Reads data/SeisSol_Benchmarking_AltoTiberinaCatalog_SuperMUCNGPhase1.csv:
-one row per (version, precision, order), with total job time (minutes) per
-node count. "Ideal" scaling is derived per order from its own smallest node
-count (perfect linear speedup), over the same node-count range as that
-order's measured data.
+two rows per (version, precision, order) -- "Total job time (Slurm) [mins]"
+(measured) and "ideal scaling" (perfect linear speedup from the smallest
+measured node count) -- with total job time (minutes) per node count.
 """
 
 from pathlib import Path
@@ -29,6 +28,9 @@ ORDER_COLORS = {
 }
 ORDER_LABELS = {"o5": "order5", "o4": "order4"}
 
+MEASURED_METRIC = "Total job time (Slurm) [mins]"
+IDEAL_METRIC = "ideal scaling"
+
 
 def load_data(csv_path=DATA_FILE) -> pd.DataFrame:
     return pd.read_csv(csv_path)
@@ -38,16 +40,14 @@ def node_columns(df: pd.DataFrame) -> list[int]:
     return [int(c) for c in df.columns if c not in META_COLUMNS]
 
 
-def measured_series(row: pd.Series, nodes: list[int]) -> pd.Series:
+def row_series(row: pd.Series, nodes: list[int]) -> pd.Series:
     values = row[[str(n) for n in nodes]].astype(float)
     values.index = nodes
     return values.dropna()
 
 
-def ideal_series(measured: pd.Series) -> pd.Series:
-    """Perfect linear scaling from the smallest measured node count."""
-    base_nodes, base_time = measured.index[0], measured.iloc[0]
-    return pd.Series({n: base_time * base_nodes / n for n in measured.index})
+def metric_row(df: pd.DataFrame, order: str, metric: str) -> pd.Series:
+    return df[(df["order"] == order) & (df["No. of Nodes"] == metric)].iloc[0]
 
 
 def style_axes(ax, nodes: list[int], time_ticks: list[int]):
@@ -75,13 +75,12 @@ def make_plot(df: pd.DataFrame, save_pdf=True, save_png=True):
 
     fig, ax = plt.subplots(figsize=(6.5, 5.5), constrained_layout=True)
 
-    for _, row in df.iterrows():
-        order = row["order"]
+    for order in df["order"].unique():
         colors = ORDER_COLORS[order]
         label = ORDER_LABELS[order]
 
-        measured = measured_series(row, nodes)
-        ideal = ideal_series(measured)
+        measured = row_series(metric_row(df, order, MEASURED_METRIC), nodes)
+        ideal = row_series(metric_row(df, order, IDEAL_METRIC), nodes)
 
         ax.plot(
             measured.index, measured.values,
