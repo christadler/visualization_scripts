@@ -101,7 +101,7 @@ def make_plot(df: pd.DataFrame, save_pdf=True, save_png=True):
     ax.set_ylabel("Simulation time (min)")
     ax.set_title("Strong Scaling (AltoTiberina Catalog, SuperMUC-NG-Phase1, dp, SeisSol v.1.3.1)")
 
-    ax.legend(loc="upper right", frameon=False)
+    ax.legend(loc="upper right", frameon=True, facecolor="white", edgecolor="none", framealpha=1)
 
     if save_pdf:
         fig.savefig(f"{OUTPUT_FILE}.pdf", bbox_inches="tight")
